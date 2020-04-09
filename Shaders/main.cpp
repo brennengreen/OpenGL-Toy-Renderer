@@ -105,9 +105,55 @@ int main() {
 		17, 18, 16, 17, 19, 18, // t
 		22, 21, 20, 22, 23, 21  // b
 	};
+	std::vector<float> verticesl = {
+		// f
+		-.5f,-.5f,.5f, // lbf
+		 .5f,-.5f,.5f, // rbf
+		-.5f, .5f,.5f, // ltf
+		 .5f, .5f,.5f, // rtf
+
+		// n
+		-.5f,-.5f,-.5f, // lbn
+		 .5f,-.5f,-.5f, // rbn
+		-.5f, .5f,-.5f, // ltn
+		 .5f, .5f,-.5f, // rtn
+
+		// l
+		-.5f,-.5f,-.5f, // lbn
+		-.5f,-.5f, .5f, // lbf
+		-.5f, .5f,-.5f, // ltn
+		-.5f, .5f, .5f, // ltf
+
+		// r
+		 .5f,-.5f,-.5f, // rbn
+		 .5f,-.5f, .5f, // rbf
+		 .5f, .5f,-.5f, // rtn
+		 .5f, .5f, .5f, // rtf
+
+		// t
+		-.5f, .5f,-.5f, // ltn
+		-.5f, .5f, .5f, // ltf
+		 .5f, .5f,-.5f, // rtn
+		 .5f, .5f, .5f, // rtf
+
+		// b
+		-.5f,-.5f,-.5f, // lbn
+		-.5f,-.5f, .5f, // lbf
+		 .5f,-.5f,-.5f, // rbn
+		 .5f,-.5f, .5f, // rbf
+	};
+	std::vector<GLuint> indicesl = {
+		1, 2, 0, 1, 3, 2, // f
+		6, 5, 4, 6, 7, 5, // n
+		9, 10, 8, 11, 10, 9, // l
+		14, 13, 12, 14, 15, 13, // r
+		17, 18, 16, 17, 19, 18, // t
+		22, 21, 20, 22, 23, 21  // b
+	};
 
 	Geometry cube(vertices, indices);
-	cube.setShader("cube.vert", "cube.frag");
+	Geometry plane(verticesl, indicesl);
+	cube.setShader("cube.vert", "cube.frag"); plane.setShader("plane.vert", "plane.frag");
 
 	for (int i = 0; i < vertices.size(); i = i + 3) {
 		std::cout << "X: " << vertices[i];
@@ -131,13 +177,26 @@ int main() {
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
+
+		cube.shader.use();
 		cube.shader.setMat4("projection", projection);
 		cube.shader.setMat4("view", view);
-
 		glm::mat4 model = glm::mat4(1.0f);
 		cube.shader.setMat4("model", model);
 		cube.shader.setFloat("time", currentFrame);
 		cube.Draw();
+
+		plane.shader.use();
+		plane.shader.setMat4("view", view);
+		plane.shader.setMat4("projection", projection);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0, -0.51f, 0));
+		model = glm::scale(model, glm::vec3(5.0f, 0.0f, 5.0f));
+		plane.shader.setMat4("model", model);
+		plane.shader.setFloat("time", currentFrame);
+		plane.Draw();
+
+
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

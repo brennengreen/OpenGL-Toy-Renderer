@@ -49,5 +49,11 @@
     <None Include="cube.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="plane.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="plane.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

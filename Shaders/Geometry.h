@@ -7,10 +7,26 @@
 
 #include "Shader.h"
 
+struct Vertex {
+	float x;
+	float y;
+	float z;
+	glm::vec3 normal;
+};
+struct Triangle {
+	Vertex vertices[3];
+	glm::vec3 normal;
+};
+struct Mesh {
+	std::vector<Vertex> vertices;
+	std::vector<Triangle> triangles;
+};
+
 class Geometry {
 public:
 	std::vector<float> mesh;
 	std::vector<GLuint> indices;
+	std::vector<glm::vec3> normals;
 	GLuint VAO;
 	Shader shader;
 
@@ -21,7 +37,9 @@ public:
 private:
 	GLuint VBO, EBO;
 
+
 	void setup();
+	void getNormals();
 
 };
 
