@@ -4,6 +4,19 @@ Geometry::Geometry(std::vector<float> vertices, std::vector<GLuint> indices)
 {
 	mesh = vertices;
 	this->indices = indices;
+
+	for (int i = 0; i < indices.size(); i = i + 3)
+	{
+		std::cout << "Triangle: ";
+		std::cout << "X: " << vertices[indices[i]];
+		std::cout << "Y: " << vertices[indices[i + 1]];
+		std::cout << "Z: " << vertices[indices[i + 2]] << std::endl;
+		float x = vertices[indices[i]];
+		float y = vertices[indices[i]];
+		float z = vertices[indices[i]];
+		//testMesh.vertices.push_back(Vertex(x, y, z))
+	}
+
 	setup();
 }
 

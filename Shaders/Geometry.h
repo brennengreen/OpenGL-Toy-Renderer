@@ -7,19 +7,19 @@
 
 #include "Shader.h"
 
-struct Vertex {
+struct GVertex {
 	float x;
 	float y;
 	float z;
 	glm::vec3 normal;
 };
-struct Triangle {
-	Vertex vertices[3];
+struct GTriangle {
+	GVertex vertices[3];
 	glm::vec3 normal;
 };
-struct Mesh {
-	std::vector<Vertex> vertices;
-	std::vector<Triangle> triangles;
+struct GMesh {
+	std::vector<GVertex> vertices;
+	std::vector<GTriangle> triangles;
 };
 
 class Geometry {
@@ -27,6 +27,7 @@ public:
 	std::vector<float> mesh;
 	std::vector<GLuint> indices;
 	std::vector<glm::vec3> normals;
+	GMesh testMesh;
 	GLuint VAO;
 	Shader shader;
 

@@ -4,16 +4,19 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <filesystem>
 #include <vector>
 
 #include "Shader.h"
 #include "Geometry.h"
 #include "Camera.h"
+#include "Model.h"
+#include "stb_image.h" 
+
 
 void framebuffer_size_callback(GLFWwindow * window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
-void loop(GLFWwindow* window);
 void process_input(GLFWwindow* window);
 
 // CONFIGS
@@ -29,6 +32,9 @@ const float CAM_SENSITIVITY = 0.15f;
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
+
+glm::vec3 lightPos(1.2f, 1.0f, 5.0f);
+glm::vec3 lightColor(0.90f, 0.90f, 1.0f);
 
 int main() {
 	glfwInit();
@@ -55,11 +61,12 @@ int main() {
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 
-	// CAMERA CONFIG ///////////////////////////////////////////////////////////////////////////////
+	// CAMERA CONFIG /////////////////////////////////////////////////////////////////////////////
 	camera.MovementSpeed = CAM_SPEED;
 	camera.MouseSensitivity = CAM_SENSITIVITY;
-	///////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////
 
+	// PLANE /////////////////////////////////////////////////////////////////////////////////////
 	std::vector<float> vertices = { 
 		// f
 		-.5f,-.5f,.5f, // lbf
@@ -105,61 +112,15 @@ int main() {
 		17, 18, 16, 17, 19, 18, // t
 		22, 21, 20, 22, 23, 21  // b
 	};
-	std::vector<float> verticesl = {
-		// f
-		-.5f,-.5f,.5f, // lbf
-		 .5f,-.5f,.5f, // rbf
-		-.5f, .5f,.5f, // ltf
-		 .5f, .5f,.5f, // rtf
+	Geometry plane(vertices, indices);
+	plane.setShader("plane.vert", "plane.frag");
+	//////////////////////////////////////////////////////////////////////////////////////////////
 
-		// n
-		-.5f,-.5f,-.5f, // lbn
-		 .5f,-.5f,-.5f, // rbn
-		-.5f, .5f,-.5f, // ltn
-		 .5f, .5f,-.5f, // rtn
+	// SHADERS ///////////////////////////////////////////////////////////////////////////////////
+	Shader meshShader("mesh.vert", "mesh.frag");
+	//////////////////////////////////////////////////////////////////////////////////////////////
 
-		// l
-		-.5f,-.5f,-.5f, // lbn
-		-.5f,-.5f, .5f, // lbf
-		-.5f, .5f,-.5f, // ltn
-		-.5f, .5f, .5f, // ltf
-
-		// r
-		 .5f,-.5f,-.5f, // rbn
-		 .5f,-.5f, .5f, // rbf
-		 .5f, .5f,-.5f, // rtn
-		 .5f, .5f, .5f, // rtf
-
-		// t
-		-.5f, .5f,-.5f, // ltn
-		-.5f, .5f, .5f, // ltf
-		 .5f, .5f,-.5f, // rtn
-		 .5f, .5f, .5f, // rtf
-
-		// b
-		-.5f,-.5f,-.5f, // lbn
-		-.5f,-.5f, .5f, // lbf
-		 .5f,-.5f,-.5f, // rbn
-		 .5f,-.5f, .5f, // rbf
-	};
-	std::vector<GLuint> indicesl = {
-		1, 2, 0, 1, 3, 2, // f
-		6, 5, 4, 6, 7, 5, // n
-		9, 10, 8, 11, 10, 9, // l
-		14, 13, 12, 14, 15, 13, // r
-		17, 18, 16, 17, 19, 18, // t
-		22, 21, 20, 22, 23, 21  // b
-	};
-
-	Geometry cube(vertices, indices);
-	Geometry plane(verticesl, indicesl);
-	cube.setShader("cube.vert", "cube.frag"); plane.setShader("plane.vert", "plane.frag");
-
-	for (int i = 0; i < vertices.size(); i = i + 3) {
-		std::cout << "X: " << vertices[i];
-		std::cout << " Y: " << vertices[i + 1];
-		std::cout << " Z: " << vertices[i + 2] << std::endl;
-	}
+	Model meshModel((char*)("Models/Planet/planet.obj"));
 
 	// Main Loop
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -177,20 +138,26 @@ int main() {
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-
-		cube.shader.use();
-		cube.shader.setMat4("projection", projection);
-		cube.shader.setMat4("view", view);
 		glm::mat4 model = glm::mat4(1.0f);
-		cube.shader.setMat4("model", model);
-		cube.shader.setFloat("time", currentFrame);
-		cube.Draw();
+
+		meshShader.use();
+		model = glm::mat4(1.0f);
+		//model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+		meshShader.setMat4("model", model);
+		meshShader.setVec3("lightColor", lightColor);
+		meshShader.setVec3("lightPos", lightPos);
+		meshShader.setMat4("projection", projection);
+		meshShader.setMat4("view", view);
+		meshShader.setVec3("viewPos", camera.Position);
+		meshShader.setVec3("objColor", glm::vec3(0.45f, 0.745f, 0.89f));
+		meshShader.setFloat("ambientStrength", 0.25);
+		meshModel.Draw(meshShader);
 
 		plane.shader.use();
 		plane.shader.setMat4("view", view);
 		plane.shader.setMat4("projection", projection);
 		model = glm::mat4(1.0f);
-		model = glm::translate(model, glm::vec3(0, -0.51f, 0));
+		model = glm::translate(model, glm::vec3(0, -1.0f, 0));
 		model = glm::scale(model, glm::vec3(5.0f, 0.0f, 5.0f));
 		plane.shader.setMat4("model", model);
 		plane.shader.setFloat("time", currentFrame);
