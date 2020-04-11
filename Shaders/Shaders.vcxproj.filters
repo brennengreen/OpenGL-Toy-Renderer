@@ -67,11 +67,5 @@
     <None Include="mesh.frag">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="depthShader.frag">
-      <Filter>Resource Files</Filter>
-    </None>
-    <None Include="depthShader.vert">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

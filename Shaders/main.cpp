@@ -66,118 +66,35 @@ int main() {
 	camera.MouseSensitivity = CAM_SENSITIVITY;
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
-	// PLANE /////////////////////////////////////////////////////////////////////////////////////
-	std::vector<float> vertices = { 
-		// f
-		-.5f,-.5f,.5f, // lbf
-		 .5f,-.5f,.5f, // rbf
-		-.5f, .5f,.5f, // ltf
-		 .5f, .5f,.5f, // rtf
-
-		// n
-		-.5f,-.5f,-.5f, // lbn
-		 .5f,-.5f,-.5f, // rbn
-		-.5f, .5f,-.5f, // ltn
-		 .5f, .5f,-.5f, // rtn
-
-		// l
-		-.5f,-.5f,-.5f, // lbn
-		-.5f,-.5f, .5f, // lbf
-		-.5f, .5f,-.5f, // ltn
-		-.5f, .5f, .5f, // ltf
-
-		// r
-		 .5f,-.5f,-.5f, // rbn
-		 .5f,-.5f, .5f, // rbf
-		 .5f, .5f,-.5f, // rtn
-		 .5f, .5f, .5f, // rtf
-
-		// t
-		-.5f, .5f,-.5f, // ltn
-		-.5f, .5f, .5f, // ltf
-		 .5f, .5f,-.5f, // rtn
-		 .5f, .5f, .5f, // rtf
-
-		// b
-		-.5f,-.5f,-.5f, // lbn
-		-.5f,-.5f, .5f, // lbf
-		 .5f,-.5f,-.5f, // rbn
-		 .5f,-.5f, .5f, // rbf
-	};
-	std::vector<GLuint> indices = { 
-		1, 2, 0, 1, 3, 2, // f
-		6, 5, 4, 6, 7, 5, // n
-		9, 10, 8, 11, 10, 9, // l
-		14, 13, 12, 14, 15, 13, // r
-		17, 18, 16, 17, 19, 18, // t
-		22, 21, 20, 22, 23, 21  // b
-	};
-	Geometry plane(vertices, indices);
-	plane.setShader("mesh.vert", "mesh.frag");
-	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	// SHADERS ///////////////////////////////////////////////////////////////////////////////////
 	Shader meshShader("mesh.vert", "mesh.frag");
-	Shader depthShader("depthShader.vert", "depthShader.frag");
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
+	// MODELS  ///////////////////////////////////////////////////////////////////////////////////
 	Model meshModel((char*)("Models/Planet/planet.obj"));
+	Model planeModel((char*)("Models/Plane/plane.obj"));
+	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	// Main Loop
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
-
-	GLuint depthMapFBO;
-	glGenFramebuffers(1, &depthMapFBO);
-
-	const GLuint SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
-
-	unsigned int depthMap;
-	glGenTextures(1, &depthMap);
-	glBindTexture(GL_TEXTURE_2D, depthMap);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-	glDrawBuffer(GL_NONE);
-	glReadBuffer(GL_NONE);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
 	glEnable(GL_DEPTH_TEST);
 	while (!glfwWindowShouldClose(window)) {
+		// Important Time Keeping
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-
+		// Process Input
 		process_input(window);
-
+		// Render
 		glClearColor(0.66f, 0.79f, 0.85f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Render depth of scene to depth map
-		float near_plane = 1.0f, far_plane = 7.5f;
-		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-		glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
-		depthShader.use();
-		depthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-
-		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
-		// Reset Viewport
-		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+		glm::mat4 model = glm::mat4(1.0f);
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		glm::mat4 view = camera.GetViewMatrix();
-		glm::mat4 model = glm::mat4(1.0f);
+		model = glm::mat4(1.0f);
 
 		meshShader.use();
 		model = glm::mat4(1.0f);
@@ -188,10 +105,6 @@ int main() {
 		meshShader.setMat4("model", model);
 		meshShader.setVec3("lightColor", lightColor);
 		meshShader.setVec3("lightPos", lightPos);
-		meshShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glUniform1i(glGetUniformLocation(meshShader.ID, "shadowMap"), depthMap);
 		meshShader.setMat4("projection", projection);
 		meshShader.setMat4("view", view);
 		meshShader.setVec3("viewPos", camera.Position);
@@ -199,25 +112,14 @@ int main() {
 		meshShader.setFloat("ambientStrength", 0.25);
 		meshModel.Draw(meshShader);
 
-		plane.shader.use();
-		plane.shader.setMat4("view", view);
-		plane.shader.setMat4("projection", projection);
-		plane.shader.setVec3("lightColor", lightColor);
-		plane.shader.setVec3("lightPos", lightPos);
-		plane.shader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, depthMap);
-		glUniform1i(glGetUniformLocation(plane.shader.ID, "shadowMap"), depthMap);
-		plane.shader.setVec3("viewPos", camera.Position);
-		plane.shader.setVec3("objColor", glm::vec3(0.65f, 0.65f, 0.89f));
-		plane.shader.setFloat("ambientStrength", 0.5);
+		// Plane
+		meshShader.setVec3("objColor", glm::vec3(0.65f, 0.65f, 0.89f));
+		meshShader.setFloat("ambientStrength", 0.5);
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0, -1.0f, 0));
 		model = glm::scale(model, glm::vec3(5.0f, 0.1f, 5.0f));
-		plane.shader.setMat4("model", model);
-		plane.Draw();
-
-
+		meshShader.setMat4("model", model);
+		planeModel.Draw(meshShader);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
