@@ -113,11 +113,12 @@ int main() {
 		22, 21, 20, 22, 23, 21  // b
 	};
 	Geometry plane(vertices, indices);
-	plane.setShader("plane.vert", "plane.frag");
+	plane.setShader("mesh.vert", "mesh.frag");
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	// SHADERS ///////////////////////////////////////////////////////////////////////////////////
 	Shader meshShader("mesh.vert", "mesh.frag");
+	Shader depthShader("depthShader.vert", "depthShader.frag");
 	//////////////////////////////////////////////////////////////////////////////////////////////
 
 	Model meshModel((char*)("Models/Planet/planet.obj"));
@@ -125,15 +126,53 @@ int main() {
 	// Main Loop
 	glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
+
+	GLuint depthMapFBO;
+	glGenFramebuffers(1, &depthMapFBO);
+
+	const GLuint SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+
+	unsigned int depthMap;
+	glGenTextures(1, &depthMap);
+	glBindTexture(GL_TEXTURE_2D, depthMap);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+	glDrawBuffer(GL_NONE);
+	glReadBuffer(GL_NONE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	glEnable(GL_DEPTH_TEST);
 	while (!glfwWindowShouldClose(window)) {
-
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
 		process_input(window);
+
 		glClearColor(0.66f, 0.79f, 0.85f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		// Render depth of scene to depth map
+		float near_plane = 1.0f, far_plane = 7.5f;
+		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+		glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
+		depthShader.use();
+		depthShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+
+		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
+		// Reset Viewport
+		glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
@@ -142,10 +181,17 @@ int main() {
 
 		meshShader.use();
 		model = glm::mat4(1.0f);
-		//model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1, 0, 0));
+
+		//model = glm::translate(model, glm::vec3(0, cos(currentFrame) * 0.2, 0));
+		model = glm::rotate(model, glm::radians(cos(currentFrame) * 20.0f + 5.0f), glm::vec3(1, 0, 1));
+
 		meshShader.setMat4("model", model);
 		meshShader.setVec3("lightColor", lightColor);
 		meshShader.setVec3("lightPos", lightPos);
+		meshShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glUniform1i(glGetUniformLocation(meshShader.ID, "shadowMap"), depthMap);
 		meshShader.setMat4("projection", projection);
 		meshShader.setMat4("view", view);
 		meshShader.setVec3("viewPos", camera.Position);
@@ -156,11 +202,19 @@ int main() {
 		plane.shader.use();
 		plane.shader.setMat4("view", view);
 		plane.shader.setMat4("projection", projection);
+		plane.shader.setVec3("lightColor", lightColor);
+		plane.shader.setVec3("lightPos", lightPos);
+		plane.shader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		glUniform1i(glGetUniformLocation(plane.shader.ID, "shadowMap"), depthMap);
+		plane.shader.setVec3("viewPos", camera.Position);
+		plane.shader.setVec3("objColor", glm::vec3(0.65f, 0.65f, 0.89f));
+		plane.shader.setFloat("ambientStrength", 0.5);
 		model = glm::mat4(1.0f);
 		model = glm::translate(model, glm::vec3(0, -1.0f, 0));
-		model = glm::scale(model, glm::vec3(5.0f, 0.0f, 5.0f));
+		model = glm::scale(model, glm::vec3(5.0f, 0.1f, 5.0f));
 		plane.shader.setMat4("model", model);
-		plane.shader.setFloat("time", currentFrame);
 		plane.Draw();
 
 
@@ -171,6 +225,11 @@ int main() {
 
 	glfwTerminate();
 }
+
+void renderScene() {
+
+}
+
 
 void framebuffer_size_callback(GLFWwindow * window, int width, int height) {
 	glViewport(0, 0, width, height);
@@ -201,6 +260,11 @@ void scroll_callback(GLFWwindow * window, double xoffset, double yoffset)
 void process_input(GLFWwindow* window) {
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
+
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+		camera.MovementSpeed = CAM_SPEED * 0.2;
+	else
+		camera.MovementSpeed = CAM_SPEED;
 
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
