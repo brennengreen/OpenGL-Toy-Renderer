@@ -33,10 +33,10 @@ void main()
 
 	if (dot(L, Normal) > 0.0)
 	{
-		specular = 0.5 * pow(max(0, dot(H, norm)), 16);
+		specular = 0.5 * pow(max(0, dot(H, norm)), 128);
 	}
 
-	float specMask = (pow(dot(H, norm), 16) > 0.4) ? 1 : 0;
+	float specMask = (pow(dot(H, norm), 16) > 0.4) ? .5 : 0;
 
 	float edgeDetection = (dot(V, norm) > 0.2) ? 1 : 0;
 	
